@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container mt-5">
+    <h2>Empleados</h2>
+    <a href="/api/auth/logout" class="btn btn-danger">Salir</a>
+    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createEmployeeModal">Agregar Empleado</button>
+    <input type="text" id="searchInput" class="form-control mt-3" placeholder="Buscar empleado por nombre">
+  
+    <table id="employeesTable" class="table table-striped mt-3">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Apellidos</th>
+          <th>Telefono</th>
+          <th>Email</th>
+          <th>Dirección</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Create Employee Modal -->
+  <div class="modal fade" id="createEmployeeModal" tabindex="-1" aria-labelledby="createEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="createEmployeeModalLabel">Agregar Empleado</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <form id="createEmployeeForm">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="name">Nombre</label>
+              <input type="text" id="name" name="name" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="lastName">Apellidos</label>
+              <input type="text" id="lastName" name="lastName" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="phone">Telefono</label>
+              <input type="text" id="phone" name="phone" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="address">Dirección</label>
+              <input type="text" id="address" name="address" class="form-control">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Employee Modal -->
+  <div class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editEmployeeModalLabel">Editar Empleado</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <form id="editEmployeeForm">
+          <div class="modal-body">
+            <input type="hidden" id="editEmployeeId">
+            <div class="form-group">
+              <label for="editName">Nombre</label>
+              <input type="text" id="editName" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="editLastName">Apellidos</label>
+              <input type="text" id="editLastName" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="editPhone">Telefono</label>
+              <input type="text" id="editPhone" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="editEmail">Email</label>
+              <input type="email" id="editEmail" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="editAddress">Dirección</label>
+              <input type="text" id="editAddress" class="form-control">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const fetchEmployees = async (name = '') => {
+        const response = await fetch(`/api/employees${name ? `/search?name=${name}` : ''}`, {
+          credentials: 'include'
+        });
+        const employees = await response.json();
+        const tableBody = document.querySelector('#employeesTable tbody');
+        tableBody.innerHTML = '';
+  
+        employees.forEach(employee => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${employee.name}</td>
+            <td>${employee.lastName}</td>
+            <td>${employee.phone || ''}</td>
+            <td>${employee.email}</td>
+            <td>${employee.address || ''}</td>
+            <td>
+              <button onclick="deleteEmployee(${employee.id})" class="btn btn-danger btn-sm">Borrar</button>
+              <button onclick="openEditModal(${employee.id})" class="btn btn-info btn-sm">Editar</button>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+      };
+
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        const name = e.target.value;
+        fetchEmployees(name);
+      });
+  
+      document.getElementById('createEmployeeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value;
+        const lastName = document.getElementById('lastName').value;
+        const phone = document.getElementById('phone').value;
+        const email = document.getElementById('email').value;
+        const address = document.getElementById('address').value;
+  
+        const response = await fetch('/api/employees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, lastName, phone, email, address })
+        });
+  
+        if (response.ok) {
+          $('#createEmployeeModal').modal('hide');
+          fetchEmployees();
+        } else {
+          alert('Error al agregar empleado');
+        }
+      });
+  
+      window.deleteEmployee = async (id) => {
+        const response = await fetch(`/api/employees/${id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+  
+        if (response.ok) {
+          fetchEmployees();
+        } else {
+          alert('Error al eliminar empleado');
+        }
+      };
+  
+      window.openEditModal = async (id) => {
+        const response = await fetch(`/api/employees/${id}`, { credentials: 'include' });
+        const employee = await response.json();
+        
+        document.getElementById('editEmployeeId').value = id;
+        document.getElementById('editName').value = employee.name;
+        document.getElementById('editLastName').value = employee.lastName;
+        document.getElementById('editPhone').value = employee.phone || '';
+        document.getElementById('editEmail').value = employee.email;
+        document.getElementById('editAddress').value = employee.address || '';
+        
+        $('#editEmployeeModal').modal('show');
+      };
+  
+      document.getElementById('editEmployeeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editEmployeeId').value;
+        const name = document.getElementById('editName').value;
+        const lastName = document.getElementById('editLastName').value;
+        const phone = document.getElementById('editPhone').value;
+        const email = document.getElementById('editEmail').value;
+        const address = document.getElementById('editAddress').value;
+  
+        const response = await fetch(`/api/employees/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, lastName, phone, email, address })
+        });
+  
+        if (response.ok) {
+          $('#editEmployeeModal').modal('hide');
+          fetchEmployees();
+        } else {
+          alert('Error al actualizar empleado');
+        }
+      });
+  
+      fetchEmployees();
+    });
+  </script>
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
